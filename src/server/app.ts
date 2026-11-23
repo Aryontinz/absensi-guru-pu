@@ -22,6 +22,7 @@ import {
   loginWithPassword,
   saveStudentAttendanceBatch,
   setupInitialAdmin,
+  supabaseEnvDiagnostics,
   updateManagedUser,
   updateStudent,
 } from './db.js';
@@ -68,6 +69,7 @@ export function createApiApp() {
       ok: true,
       provider: isSupabaseConfigured ? 'supabase' : 'sqlite',
       vercel: Boolean(process.env.VERCEL),
+      envCheck: supabaseEnvDiagnostics,
     });
   });
 

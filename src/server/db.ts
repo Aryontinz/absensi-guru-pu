@@ -26,12 +26,25 @@ const SUPABASE_URL = cleanEnv(
 const SUPABASE_ANON_KEY = cleanEnv(
   process.env.SUPABASE_ANON_KEY ||
     process.env.VITE_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.VITE_SUPABASE_PUBLISHABLE_KEY
 );
-const SUPABASE_SERVICE_ROLE_KEY = cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY);
+const SUPABASE_SERVICE_ROLE_KEY = cleanEnv(
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY
+);
+
+export const supabaseEnvDiagnostics = {
+  hasValidUrl: /^https?:\/\//i.test(SUPABASE_URL),
+  hasAnonKey: Boolean(SUPABASE_ANON_KEY),
+  hasServiceRoleKey: Boolean(SUPABASE_SERVICE_ROLE_KEY),
+};
 
 export const isSupabaseConfigured = Boolean(
-  /^https?:\/\//i.test(SUPABASE_URL) && SUPABASE_ANON_KEY && SUPABASE_SERVICE_ROLE_KEY
+  supabaseEnvDiagnostics.hasValidUrl &&
+    supabaseEnvDiagnostics.hasAnonKey &&
+    supabaseEnvDiagnostics.hasServiceRoleKey
 );
 
 let supabaseAnon: SupabaseClient | null = null;
@@ -69,8 +82,12 @@ function getSqliteDb(): Database.Database {
   if (sqliteDb) return sqliteDb;
 
   if (process.env.VERCEL) {
+    const missing: string[] = [];
+    if (!supabaseEnvDiagnostics.hasValidUrl) missing.push('SUPABASE_URL');
+    if (!supabaseEnvDiagnostics.hasAnonKey) missing.push('SUPABASE_ANON_KEY');
+    if (!supabaseEnvDiagnostics.hasServiceRoleKey) missing.push('SUPABASE_SERVICE_ROLE_KEY');
     throw new Error(
-      'Environment variables SUPABASE_URL, SUPABASE_ANON_KEY, dan SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di Vercel.'
+      `Variabel Supabase di Vercel belum lengkap (${missing.join(', ')}). Tambahkan di Vercel → Settings → Environment Variables lalu klik Redeploy.`
     );
   }
 
