@@ -14,6 +14,7 @@ import {
   getUserById,
   getUserFromToken,
   hardDeleteUser,
+  isSupabaseConfigured,
   listClasses,
   listMajors,
   listStudents,
@@ -23,8 +24,8 @@ import {
   setupInitialAdmin,
   updateManagedUser,
   updateStudent,
-} from './db';
-import type { Profile, UserRole } from '../types/database';
+} from './db.js';
+import type { Profile, UserRole } from '../types/database.js';
 
 interface AuthenticatedRequest extends Request {
   user?: Profile;
@@ -61,6 +62,14 @@ function requireRole(...roles: UserRole[]) {
 export function createApiApp() {
   const app = express();
   app.use(express.json());
+
+  app.get('/api/health', (_req, res) => {
+    res.json({
+      ok: true,
+      provider: isSupabaseConfigured ? 'supabase' : 'sqlite',
+      vercel: Boolean(process.env.VERCEL),
+    });
+  });
 
   // ==========================================
   // AUTH ROUTES
@@ -333,6 +342,10 @@ export function createApiApp() {
       }
     }
   );
+
+  app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+    res.status(500).json({ error: err?.message || 'Terjadi kesalahan internal pada server.' });
+  });
 
   return app;
 }

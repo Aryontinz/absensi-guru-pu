@@ -14,7 +14,7 @@ import type {
   StudentAttendance,
   StudentStatus,
   UserRole,
-} from '../types/database';
+} from '../types/database.js';
 
 const cleanEnv = (v?: string) => (v || '').trim().replace(/^["']|["']$/g, '');
 
@@ -31,19 +31,23 @@ const SUPABASE_ANON_KEY = cleanEnv(
 const SUPABASE_SERVICE_ROLE_KEY = cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 export const isSupabaseConfigured = Boolean(
-  SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_SERVICE_ROLE_KEY
+  /^https?:\/\//i.test(SUPABASE_URL) && SUPABASE_ANON_KEY && SUPABASE_SERVICE_ROLE_KEY
 );
 
 let supabaseAnon: SupabaseClient | null = null;
 let supabaseAdmin: SupabaseClient | null = null;
 
 if (isSupabaseConfigured) {
-  supabaseAnon = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-  supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  try {
+    supabaseAnon = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+  } catch (err) {
+    console.error('Supabase client initialization failed:', (err as Error).message);
+  }
 }
 
 // Local SQLite Initialization (used when Supabase env vars are not configured)
@@ -64,13 +68,20 @@ function inferMajorCode(kelas: string): string | null {
 function getSqliteDb(): Database.Database {
   if (sqliteDb) return sqliteDb;
 
+  if (process.env.VERCEL) {
+    throw new Error(
+      'Environment variables SUPABASE_URL, SUPABASE_ANON_KEY, dan SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di Vercel.'
+    );
+  }
+
   const dataDir = path.resolve(process.cwd(), 'data');
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
   }
 
   const require = createRequire(import.meta.url);
-  const BetterSqlite3 = require('better-sqlite3') as typeof Database;
+  const sqliteModule = 'better-sqlite3';
+  const BetterSqlite3 = require(sqliteModule) as typeof Database;
   const dbPath = path.join(dataDir, 'absensi.db');
   const instance = new BetterSqlite3(dbPath);
   instance.pragma('journal_mode = WAL');

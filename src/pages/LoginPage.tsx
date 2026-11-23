@@ -28,8 +28,9 @@ export default function LoginPage() {
       .then((res) => {
         setNeedsInitialAdmin(res.needsInitialAdmin);
       })
-      .catch(() => {
+      .catch((err) => {
         setNeedsInitialAdmin(false);
+        setErrorMsg((err as Error).message);
       })
       .finally(() => {
         setCheckingStatus(false);
