@@ -404,7 +404,16 @@ export async function loginWithPassword(
   if (isSupabaseConfigured && supabaseAnon && supabaseAdmin) {
     const { data, error } = await supabaseAnon.auth.signInWithPassword({ email, password });
     if (error || !data.session || !data.user) {
-      throw new Error('Email atau password salah.');
+      const rawMsg = error?.message || '';
+      if (rawMsg.toLowerCase().includes('invalid login credentials')) {
+        throw new Error('Email atau password salah.');
+      }
+      if (rawMsg.toLowerCase().includes('email not confirmed')) {
+        throw new Error(
+          'Email belum dikonfirmasi di Supabase Auth. Aktifkan/konfirmasi user di Supabase Dashboard → Authentication → Users.'
+        );
+      }
+      throw new Error(rawMsg || 'Gagal login ke Supabase Authentication.');
     }
 
     const { data: profile, error: profErr } = await supabaseAdmin
